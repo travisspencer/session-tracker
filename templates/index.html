@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+          integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+    <title>Session Tracker</title>
+</head>
+<body class="p-3">
+<h1>Session Tracker</h1>
+
+<button type="button" class="btn btn-primary" id="start">Create Session</button>
+
+{% if logout_uri and username %}
+    <button type="button" class="btn btn-outline-secondary" id="logout">Logout</button>
+    Logged in as {{ username }}
+{% endif %}
+
+{% if delegations %}
+    <a class="btn-danger btn btn-lg float-lg-right pr-2" href="/delete?all">Delete All &amp; Logout</a>
+
+    <table class="table table-striped mt-5">
+        <tr>
+            <th scope="col">#</th>
+            <th scope="col">User</th>
+            <th scope="col">App</th>
+            <th scope="col">Delegation ID</th>
+            <th scope="col">SCIM Resource ID</th>
+            <th scope="col">Expiration Time</th>
+            <th scope="col">Actions</th>
+        </tr>
+        {% for delegation in delegations %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ delegation.sub }}</td>
+                <td>{{ delegation.clientId }}</td>
+                <td>{{ delegation.externalId }}</td>
+                <td>{{ delegation.id }}</td>
+                <td>{{ delegation.exp | datetime }}</td>
+                <td>
+                    <div class="btn-group" role="group">
+                        <button id="btnGroupDrop1" type="button" class="btn btn-secondary dropdown-toggle"
+                                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            Actions
+                        </button>
+                        <div class="dropdown-menu" aria-labelledby="btnGroupDrop1">
+                            <a href="/delete?id={{ delegation.id | urlencode }}" class="dropdown-item">Delete</a>
+                            <a class="dropdown-item toast-link"
+                               href="/introspect?access_token={{ delegation.access_token | urlencode }}">Introspect</a>
+                            <a class="dropdown-item toast-link"
+                               href="/refresh?refresh_token={{ delegation.refresh_token | urlencode }}">Refresh</a>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        {% endfor %}
+    </table>
+{% endif %}
+
+<div style="position: absolute; top: 10px; right: 230px; min-height: 200px; min-width: 100px;">
+    <div class="toast" data-delay="3000">
+        <div class="toast-header">
+            Results
+        </div>
+        <div class="toast-body">
+            Some text inside the toast body
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.3.1.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+        integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+        crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+        integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+        crossorigin="anonymous"></script>
+<script type="application/javascript">
+    $(document).ready(function () {
+        $("#start").click(function () {
+            document.location = "{{ authorization_uri | safe }}";
+        });
+        $("#logout").click(function () {
+            document.location = "{{ logout_uri | safe }}"
+        });
+        $(".toast-link").click(function (event) {
+            event.preventDefault();
+            var href = $(this).attr('href');
+
+            if (href.endsWith("token=")) {
+                var message = "Session may have been established in another app, so it can't be ";
+
+                if (href.endsWith("access_token=")) {
+                    message += "introspected";
+                }
+                else {
+                    message += "refreshed";
+                }
+
+                $(".toast-body").html(message);
+                $('.toast').toast("show");
+
+                return;
+            }
+
+            $.ajax({
+                url: href,
+                success: function (response) {
+                    //alert(response);
+                    $(".toast-body").html(response);
+                    $('.toast').toast("show");
+                },
+                failure: function (response) {
+                    $(".toast-body").html("Failed to call back-end: " + response);
+                    $(".toast").toast("show");
+                }
+            });
+        });
+    });
+</script>
+</body>
+</html>
