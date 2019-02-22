@@ -1,3 +1,4 @@
+import os
 import ssl
 import time
 import urllib
@@ -235,6 +236,6 @@ def index():
 
 
 if __name__ == '__main__':
-    app.secret_key = b'changeme'
+    app.secret_key = os.urandom(16)
     app.jinja_env.filters['datetime'] = lambda value: time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(value))
     app.run(debug=True)
