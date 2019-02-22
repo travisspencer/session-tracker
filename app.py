@@ -3,6 +3,7 @@ import ssl
 import time
 import urllib
 import urllib2
+from datetime import datetime, timedelta
 
 from flask import Flask, render_template, request, json, session as flask_sesion, abort
 
@@ -27,6 +28,13 @@ introspect_uri = "/introspection"
 
 
 def get_scim_access_token():
+    expiration_time, scim_access_token = flask_sesion.get("scim_access_token", (datetime.min, None))
+
+    if scim_access_token:
+        if expiration_time > datetime.now():
+            # Cache hit; don't get a new SCIM access token because the old one is still valid
+            return scim_access_token
+
     data = {
         "client_id": scim_client_id,
         "client_secret": scim_client_secret,
@@ -36,7 +44,13 @@ def get_scim_access_token():
                                      context=ssl_context())
     token_response_json = json.loads(token_response.read())
 
-    return token_response_json.get("access_token", "")
+    scim_access_token = token_response_json.get("access_token", "")
+
+    expiration_time = datetime.now() + timedelta(seconds=token_response_json.get("expires_in", 300) - 15)  # 15 = skew
+
+    flask_sesion["scim_access_token"] = (expiration_time, scim_access_token)
+
+    return scim_access_token
 
 
 def get_all_sessions_for_user(username):
@@ -49,7 +63,8 @@ def get_all_sessions_for_user(username):
 
     data = {
         "attributes": "externalId,id,sub,exp,clientId",
-        "filter": 'userName eq "%s"' % username
+        # This should work but don't due to an apparent bug in Curity
+        # "filter": 'userName eq "%s"' % username
     }
     scim_access_token = get_scim_access_token()
 
@@ -103,7 +118,7 @@ def delete():
                            logout_uri="%s%s?redirect_uri=%slogout" % (oauth_server, logout_uri, request.host_url))
 
 
-def delete_delegation(delegation_id):
+def delete_delegation(delegation_id, retry=True):
     scim_access_token = get_scim_access_token()
 
     delete_request = urllib2.Request("%s%s/%s" % (oauth_server, scim_delegation_uri, delegation_id),
@@ -115,8 +130,16 @@ def delete_delegation(delegation_id):
         scim_response = urllib2.urlopen(delete_request, context=ssl_context())
         response_code = scim_response.code
     except urllib2.HTTPError as e:
+        if e.code == 401 and retry:
+            # SCIM token might have been revoked. Try to delete delegation after getting a new token
+            app.logger.debug("Got access denied when calling SCIM server; updating token and retrying")
+            flask_sesion["scim_access_token"] = (datetime.min, None)
+            delete_delegation(delegation_id, False)
         if e.code != 404:
+            app.logger.warn("Caught error while requesting delegation: %s", e)
             raise e
+        else:
+            app.logger.info("Got 404 when trying to get delegation %s: %s", delegation_id, e)
 
     return response_code == 200
 
@@ -141,7 +164,7 @@ def introspect():
         else:
             return "Introspection was not possible"
     except urllib2.HTTPError as e:
-        print e
+        app.logger.debug("Introspection failed", e)
 
         return "Failed to introspect token due to an error"
 
