@@ -48,7 +48,8 @@ def get_all_sessions_for_user(username):
         return delegations
 
     data = {
-        "attributes": "externalId,id,sub,exp,clientId"
+        "attributes": "externalId,id,sub,exp,clientId",
+        "filter": 'userName eq "%s"' % username
     }
     scim_access_token = get_scim_access_token()
 
