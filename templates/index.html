@@ -10,7 +10,12 @@
     <title>Session Tracker</title>
 </head>
 <body class="p-3">
-<h1>Session Tracker</h1>
+<div class="row pb-3">
+    <div>
+        <span class="h1 pl-3">Session Tracker</span>
+        <span class="small">User Agent ID: <span class="font-weight-bold">{{ user_agent_id | e }}</span></span>
+    </div>
+</div>
 
 <div class="row">
     <div class="col-sm-3">
@@ -24,7 +29,7 @@
             </select>
         </div>
     </div>
-    <div class="col">
+    <div class="col pl-0">
         <button type="button" class="btn btn-primary" id="start">Create Session</button>
         {% if logout_uri and username %}
             <button type="button" class="btn btn-outline-secondary" id="logout">Logout</button>
