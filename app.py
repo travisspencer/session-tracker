@@ -111,8 +111,9 @@ def delete():
                                                      d.get("id", None) != delegation_id]
 
     return render_template("index.html",
-                           authorization_uri="%s%s?client_id=%s&response_type=code&scope=%s&redirect_uri=%scb" % (
-                               oauth_server, authorize_uri, client_id, scope, request.host_url),
+                           # Which client ID is added by JavaScript, client-side upon selection
+                           authorization_uri="%s%s?response_type=code&scope=%s&redirect_uri=%scb&client_id=" % (
+                               oauth_server, authorize_uri, scope, request.host_url),
                            delegations=delegations,
                            username=flask_sesion["username"],
                            logout_uri="%s%s?redirect_uri=%slogout" % (oauth_server, logout_uri, request.host_url))
@@ -199,7 +200,9 @@ def callback():
     delegations = flask_sesion.get("delegations", [])
 
     if code:
-        data = {'client_id': client_id, "client_secret": client_secret,
+        client_id_in_use = request.args.get("state", client_id)
+
+        data = {'client_id': client_id_in_use, "client_secret": client_secret,
                 'code': code,
                 'redirect_uri': request.base_url,
                 'grant_type': 'authorization_code'}
@@ -230,8 +233,8 @@ def callback():
                 raise e
 
     return render_template("index.html",
-                           authorization_uri="%s%s?client_id=%s&response_type=code&scope=%s&redirect_uri=%scb" % (
-                               oauth_server, authorize_uri, client_id, scope, request.host_url),
+                           authorization_uri="%s%s?response_type=code&scope=%s&redirect_uri=%scb&client_id=" % (
+                               oauth_server, authorize_uri, scope, request.host_url),
                            delegations=delegations,
                            username=flask_sesion.get("username", ""),
                            logout_uri="%s%s?redirect_uri=%slogout" % (oauth_server, logout_uri, request.host_url))
@@ -255,8 +258,8 @@ def logout():
 @app.route('/')
 def index():
     return render_template("index.html",
-                           authorization_uri="%s%s?client_id=%s&response_type=code&scope=%s&redirect_uri=%scb" % (
-                               oauth_server, authorize_uri, client_id, scope, request.host_url))
+                           authorization_uri="%s%s?response_type=code&scope=%s&redirect_uri=%scb&client_id=" % (
+                               oauth_server, authorize_uri, scope, request.host_url))
 
 
 if __name__ == '__main__':

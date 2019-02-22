@@ -12,21 +12,37 @@
 <body class="p-3">
 <h1>Session Tracker</h1>
 
-<button type="button" class="btn btn-primary" id="start">Create Session</button>
+<div class="row">
+    <div class="col-sm-3">
+        <div class="input-group mb-3">
+            <div class="input-group-prepend alert font-weight-bold">
+                Client ID:
+            </div>
+            <select class="custom-select" id="inputGroupSelect03" aria-label="Example select with button addon">
+                <option value="www">www</option>
+                <option value="www2">www2</option>
+            </select>
+        </div>
+    </div>
+    <div class="col">
+        <button type="button" class="btn btn-primary" id="start">Create Session</button>
+        {% if logout_uri and username %}
+            <button type="button" class="btn btn-outline-secondary" id="logout">Logout</button>
+            Logged in as {{ username }}
+        {% endif %}
 
-{% if logout_uri and username %}
-    <button type="button" class="btn btn-outline-secondary" id="logout">Logout</button>
-    Logged in as {{ username }}
-{% endif %}
+        {% if delegations %}
+            <a class="btn-danger btn btn-lg float-lg-right pr-2" href="/delete?all">Delete All &amp; Logout</a>
+        {% endif %}
+    </div>
+</div>
 
 {% if delegations %}
-    <a class="btn-danger btn btn-lg float-lg-right pr-2" href="/delete?all">Delete All &amp; Logout</a>
-
-    <table class="table table-striped mt-5">
+    <table class="table table-striped">
         <tr>
             <th scope="col">#</th>
             <th scope="col">User</th>
-            <th scope="col">App</th>
+            <th scope="col">Client</th>
             <th scope="col">Delegation ID</th>
             <th scope="col">SCIM Resource ID</th>
             <th scope="col">Expiration Time</th>
@@ -81,7 +97,9 @@
 <script type="application/javascript">
     $(document).ready(function () {
         $("#start").click(function () {
-            document.location = "{{ authorization_uri | safe }}";
+            var clientId = $("#inputGroupSelect03 option:selected").text();
+
+            document.location = "{{ authorization_uri | safe }}" + clientId + "&state=" + clientId;
         });
         $("#logout").click(function () {
             document.location = "{{ logout_uri | safe }}"
@@ -95,8 +113,7 @@
 
                 if (href.endsWith("access_token=")) {
                     message += "introspected";
-                }
-                else {
+                } else {
                     message += "refreshed";
                 }
 
